@@ -1,0 +1,120 @@
+<html lang="en">
+<head>
+    <title>Face tracker</title>
+    <meta charset="utf-8">
+    <style>
+        #container {
+            position: relative;
+        }
+
+        #canvas {
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+    </style>
+</head>
+<body>
+<script src="./js_files/utils.js"></script>
+<script src="./js_files/clmtrackr.js"></script>
+<script src="./js_files/model_pca_20_svm.js"></script>
+
+<div id="content">
+    <h2>Example</h2>
+    <div id="container">
+        <video id="video" preload="auto" loop="" width="368px" height="240px">
+        </video>
+        <canvas id="canvas" width="368px" height="240px"></canvas>
+    </div>
+
+
+
+    <p>Printing coordinates of the first 10 points in facial features:</p>
+    <p id="positions">featurepoint 0 : [127.82,141.80]<br>featurepoint 1 : [127.39,165.11]<br>featurepoint 2 :
+        [131.25,185.79]<br>featurepoint 3 : [138.81,206.32]<br>featurepoint 4 : [151.91,223.31]<br>featurepoint 5 :
+        [169.93,234.91]<br>featurepoint 6 : [191.09,241.38]<br>featurepoint 7 : [212.84,241.58]<br>featurepoint 8 :
+        [230.60,234.86]<br>featurepoint 9 : [243.17,221.89]<br></p>
+    <script>
+
+        var vid = document.getElementById('video');
+        //        var overlay = document.getElementById('overlay');
+        //        var overlayCC = overlay.getContext('2d');
+
+
+        var webGLTestCanvas = document.createElement('canvas');
+        if (window.WebGLRenderingContext) {
+            webGLContext = webGLTestCanvas.getContext('webgl') || webGLTestCanvas.getContext('experimental-webgl');
+            if (!webGLContext || !webGLContext.getExtension('OES_texture_float')) {
+                webGLContext = null;
+            }
+        }
+        if (webGLContext == null) {
+            alert("Your browser does not seem to support WebGL. Unfortunately this face mask example depends on WebGL, so you'll have to try it in another browser. :(");
+        }
+
+        navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+        window.URL = window.URL || window.webkitURL || window.msURL || window.mozURL;
+
+        // check for camerasupport
+        if (navigator.getUserMedia) {
+            // set up stream
+
+            // chrome 19 shim
+            var videoSelector = {video : true};
+            if (window.navigator.appVersion.match(/Chrome\/(.*?) /)) {
+                var chromeVersion = parseInt(window.navigator.appVersion.match(/Chrome\/(\d+)\./)[1], 10);
+                if (chromeVersion < 20) {
+                    videoSelector = "video";
+                }
+            };
+
+            navigator.getUserMedia(videoSelector, function( stream ) {
+                if (vid.mozCaptureStream) {
+                    vid.mozSrcObject = stream;
+                } else {
+                    vid.src = (window.URL && window.URL.createObjectURL(stream)) || stream;
+                }
+                vid.play();
+            }, function() {
+                insertAltVideo(vid);
+                alert("There was some problem trying to fetch video from your webcam, using a fallback video instead.");
+            });
+        } else {
+            insertAltVideo(vid);
+            alert("Your browser does not seem to support getUserMedia, using a fallback video instead.");
+        }
+
+        var ctracker = new clm.tracker();
+        ctracker.init(pModel);
+        ctracker.start(vid);
+
+        function positionLoop() {
+            requestAnimationFrame(positionLoop);
+            var positions = ctracker.getCurrentPosition();
+            // do something with the positions ...
+            // print the positions
+            var positionString = "";
+            if (positions) {
+                for (var p = 0; p < 10; p++) {
+                    positionString += "featurepoint " + p + " : [" + positions[p][0].toFixed(2) + "," + positions[p][1].toFixed(2) + "]<br/>";
+                }
+                document.getElementById('positions').innerHTML = positionString;
+            }
+        }
+        positionLoop();
+
+        var canvasInput = document.getElementById('canvas');
+        var cc = canvasInput.getContext('2d');
+        function drawLoop() {
+            requestAnimationFrame(drawLoop);
+            cc.clearRect(0, 0, canvasInput.width, canvasInput.height);
+            ctracker.draw(canvasInput);
+        }
+        drawLoop();
+    </script>
+</div>
+<canvas width="11px" height="781px" id="renderCanvas" style="display:none;"></canvas>
+
+
+</body>
+</html>
